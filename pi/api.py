@@ -38,6 +38,7 @@ class StatusResponse(BaseModel):
     age_seconds: float | None
     reading: Reading | None
     door_open_since: str | None
+    safe_temp_max_f: float
     health_level: Literal["good", "warning", "critical", "unknown"]
     conditions: list[str]
     message: str
@@ -114,6 +115,7 @@ def current_status() -> StatusResponse:
             age_seconds=None,
             reading=None,
             door_open_since=None,
+            safe_temp_max_f=SAFE_TEMP_MAX_F,
             health_level=health_result.level,
             conditions=list(health_result.conditions),
             message=health_result.message,
@@ -140,6 +142,7 @@ def current_status() -> StatusResponse:
         age_seconds=round(age_seconds, 1),
         reading=reading,
         door_open_since=door_open_since,
+        safe_temp_max_f=SAFE_TEMP_MAX_F,
         health_level=health_result.level,
         conditions=list(health_result.conditions),
         message=health_result.message,

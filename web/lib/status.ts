@@ -2,6 +2,7 @@ import type { OverallStatus, Reading, StatusResponse } from "@/lib/types";
 
 export const POLL_INTERVAL_MS = 5_000;
 export const IMAGE_POLL_INTERVAL_MS = 30_000;
+export const PRODUCTION_TEMP_MAX_F = 40;
 
 export type DisplayStatus = {
   kind: OverallStatus;

@@ -169,15 +169,16 @@ class ImageApiTests(unittest.TestCase):
             "door_open": 0,
             "synced": 0,
         }
-        with patch.object(api, "get_latest_readings", return_value=[row]), patch.object(
-            api, "get_door_open_since", return_value=None
-        ):
+        with patch.object(api, "SAFE_TEMP_MAX_F", 40.0), patch.object(
+            api, "get_latest_readings", return_value=[row]
+        ), patch.object(api, "get_door_open_since", return_value=None):
             response = api.current_status()
 
         self.assertEqual(response.status, "ok")
         self.assertEqual(response.health_level, "critical")
         self.assertEqual(response.conditions, ["TEMP_HIGH"])
         self.assertIsNone(response.door_open_since)
+        self.assertEqual(response.safe_temp_max_f, 40.0)
 
 
 class LauncherTests(unittest.TestCase):

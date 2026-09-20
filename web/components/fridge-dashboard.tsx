@@ -30,6 +30,7 @@ import {
   getDisplayStatus,
   IMAGE_POLL_INTERVAL_MS,
   POLL_INTERVAL_MS,
+  PRODUCTION_TEMP_MAX_F,
 } from "@/lib/status";
 import type {
   ImageItem,
@@ -415,6 +416,12 @@ function DashboardContent({
     ? Math.max(0, nowMs - new Date(doorOpenedAt).getTime())
     : 0;
   const temperatureHigh = apiStatus?.conditions.includes("TEMP_HIGH") ?? false;
+  const configuredTempMaxF =
+    typeof apiStatus?.safe_temp_max_f === "number"
+      ? apiStatus.safe_temp_max_f
+      : null;
+  const demoMode =
+    configuredTempMaxF !== null && configuredTempMaxF > PRODUCTION_TEMP_MAX_F;
 
   return (
     <>
@@ -425,6 +432,20 @@ function DashboardContent({
         <p className="mt-2 max-w-2xl text-base leading-7 text-muted">
           Live temperature, door, connection status, and camera views for volunteers.
         </p>
+        {demoMode && (
+          <div className="mt-4 flex max-w-3xl items-start gap-3 rounded-xl border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-950">
+            <Info className="mt-0.5 h-4 w-4 shrink-0 text-brand" aria-hidden="true" />
+            <p>
+              <span className="font-bold">Demo mode:</span> the temperature alert
+              threshold is temporarily set to{" "}
+              <span className="font-bold">
+                {configuredTempMaxF.toFixed(1)} °F
+              </span>{" "}
+              for the live demonstration. The deployment target is{" "}
+              {PRODUCTION_TEMP_MAX_F} °F.
+            </p>
+          </div>
+        )}
       </section>
 
       <section
@@ -525,9 +546,9 @@ function DashboardContent({
                   : "text-emerald-700"
             }
             footer={
-              stale
-                ? "Current safety status unknown"
-                : "Safety limit configured on the Pi"
+              configuredTempMaxF !== null
+                ? `${demoMode ? "Demo" : "Safety"} threshold: ${configuredTempMaxF.toFixed(1)} °F`
+                : "Safety threshold unavailable"
             }
           />
 

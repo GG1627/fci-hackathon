@@ -16,6 +16,7 @@ export type StatusResponse = {
   age_seconds: number | null;
   reading: Reading | null;
   door_open_since: string | null;
+  safe_temp_max_f: number;
   health_level: HealthLevel;
   conditions: string[];
   message: string;

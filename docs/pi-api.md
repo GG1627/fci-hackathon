@@ -23,8 +23,8 @@ Health check:
 GET http://localhost:8000/api/health
 ```
 
-Latest reading, door-open start time, freshness, health level, active rule
-conditions, and message:
+Latest reading, door-open start time, configured temperature threshold,
+freshness, health level, active rule conditions, and message:
 
 ```text
 GET http://localhost:8000/api/status
