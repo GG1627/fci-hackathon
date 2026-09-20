@@ -99,6 +99,12 @@ class ImageStorageService:
 
         return sorted(names)
 
+    def get_public_url(self, image_name: str) -> str:
+        if not IMAGE_NAME_PATTERN.fullmatch(image_name):
+            raise ValueError("Invalid FridgeGuard image name.")
+        self.ensure_public_bucket()
+        return self.client.storage.from_(BUCKET_NAME).get_public_url(image_name)
+
     def remove_old_images(self) -> None:
         names = self.list_image_names()
         old_names = names[:-MAX_REMOTE_IMAGES]

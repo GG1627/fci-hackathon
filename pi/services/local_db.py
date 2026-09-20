@@ -62,6 +62,27 @@ def get_latest_readings(
         ).fetchall()
 
 
+def get_door_open_since(db_path: Path = DEFAULT_DB_PATH) -> str | None:
+    """Return the first timestamp in the current uninterrupted open period."""
+    initialize_database(db_path)
+
+    with sqlite3.connect(db_path) as connection:
+        row = connection.execute(
+            """
+            SELECT timestamp
+            FROM readings
+            WHERE door_open = 1
+              AND id > COALESCE(
+                    (SELECT MAX(id) FROM readings WHERE door_open = 0),
+                    0
+                  )
+            ORDER BY id ASC
+            LIMIT 1
+            """
+        ).fetchone()
+    return row[0] if row else None
+
+
 def get_unsynced_readings(
     limit: int = 100, db_path: Path = DEFAULT_DB_PATH
 ) -> list[sqlite3.Row]:

@@ -16,6 +16,11 @@ FridgeGuard monitors the Gainesville Community Fridge. Read
 - The latest stored readings can be read back successfully on the Raspberry Pi.
 - The Raspberry Pi Camera Module 3 is connected and working.
 - `rpicam-still` successfully captures JPEG images on the Raspberry Pi.
+- Timestamped camera images upload to the `fridge-images` bucket.
+- Cloud image retention keeps the latest image plus ten previous images.
+- The local API exposes current/recent SQLite readings and Supabase image URLs.
+- Health rules, alert rate limiting, and the one-command Pi launcher have
+  automated test coverage.
 
 Completed pipeline:
 
@@ -32,11 +37,8 @@ Supabase is used only for cloud image storage in the `fridge-images` bucket.
 
 ## Current Task
 
-Implement and verify the independent camera pipeline: periodically capture a
-still image, upload it to Supabase Storage with a timestamped name, and retain
-the latest image plus ten previous images (11 total). Use size-conscious JPEG
-settings and keep a safe manual image-list/cleanup command. Do not add computer
-vision yet.
+Verify the one-command launcher and Discord webhook alerts on the Raspberry Pi.
+Do not add computer vision yet.
 
 ## Serial Contract
 
@@ -58,11 +60,10 @@ Raspberry Pi parser.
 ESP32 sensing, Raspberry Pi serial parsing, and SQLite logging are complete.
 Continue in this order:
 
-1. Camera capture and Supabase image upload (current)
-2. Web dashboard
-3. Discord webhook alerts
-4. Stock estimation
-5. Polish and documentation
+1. Image API, Pi launcher, health rules, and Discord alerts (current)
+2. Web dashboard (being developed separately)
+3. Stock estimation
+4. Polish and documentation
 
 Do not move to stretch features until the core sensor-to-local-storage pipeline
 is stable.
