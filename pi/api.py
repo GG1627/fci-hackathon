@@ -1,15 +1,26 @@
+import os
 from datetime import datetime, timezone
+from functools import lru_cache
+from pathlib import Path
 from typing import Literal
 
 import uvicorn
-from fastapi import FastAPI, Query
+from dotenv import load_dotenv
+from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
-from services.local_db import DEFAULT_DB_PATH, get_latest_readings
+from rules.health import evaluate_health
+from services.image_storage import ImageStorageService
+from services.local_db import DEFAULT_DB_PATH, get_door_open_since, get_latest_readings
+from services.supabase_api import load_supabase_config
 
 
-STALE_AFTER_SECONDS = 10
+ROOT_DIR = Path(__file__).resolve().parents[1]
+load_dotenv(ROOT_DIR / ".env")
+STALE_AFTER_SECONDS = float(os.getenv("READING_STALE_AFTER_SECONDS", "15"))
+SAFE_TEMP_MAX_F = float(os.getenv("SAFE_TEMP_MAX_F", "40"))
+DOOR_OPEN_ALERT_SECONDS = float(os.getenv("DOOR_OPEN_ALERT_SECONDS", "300"))
 DB_PATH = DEFAULT_DB_PATH
 
 
@@ -26,6 +37,20 @@ class StatusResponse(BaseModel):
     status: Literal["ok", "stale", "no_data"]
     age_seconds: float | None
     reading: Reading | None
+    health_level: Literal["good", "warning", "critical", "unknown"]
+    conditions: list[str]
+    message: str
+
+
+class ImageItem(BaseModel):
+    name: str
+    timestamp: str
+    url: str
+
+
+class ImagesResponse(BaseModel):
+    latest: ImageItem | None
+    history: list[ImageItem]
 
 
 app = FastAPI(title="FridgeGuard Local API", version="1.0.0")
@@ -49,6 +74,23 @@ def serialize_reading(row) -> Reading:
     )
 
 
+@lru_cache(maxsize=1)
+def get_image_storage() -> ImageStorageService:
+    supabase_url, secret_key = load_supabase_config()
+    return ImageStorageService(supabase_url, secret_key)
+
+
+def serialize_image(storage: ImageStorageService, name: str) -> ImageItem:
+    captured_at = datetime.strptime(name, "fridge-%Y%m%dT%H%M%SZ.jpg").replace(
+        tzinfo=timezone.utc
+    )
+    return ImageItem(
+        name=name,
+        timestamp=captured_at.isoformat().replace("+00:00", "Z"),
+        url=storage.get_public_url(name),
+    )
+
+
 @app.get("/api/health")
 def health() -> dict[str, str]:
     return {"status": "ok"}
@@ -58,7 +100,22 @@ def health() -> dict[str, str]:
 def current_status() -> StatusResponse:
     rows = get_latest_readings(limit=1, db_path=DB_PATH)
     if not rows:
-        return StatusResponse(status="no_data", age_seconds=None, reading=None)
+        health_result = evaluate_health(
+            None,
+            now=datetime.now(timezone.utc),
+            safe_temp_max_f=SAFE_TEMP_MAX_F,
+            stale_after_seconds=STALE_AFTER_SECONDS,
+            door_open_since=None,
+            door_open_alert_seconds=DOOR_OPEN_ALERT_SECONDS,
+        )
+        return StatusResponse(
+            status="no_data",
+            age_seconds=None,
+            reading=None,
+            health_level=health_result.level,
+            conditions=list(health_result.conditions),
+            message=health_result.message,
+        )
 
     reading = serialize_reading(rows[0])
     timestamp = datetime.fromisoformat(reading.timestamp.replace("Z", "+00:00"))
@@ -66,11 +123,22 @@ def current_status() -> StatusResponse:
         timestamp = timestamp.replace(tzinfo=timezone.utc)
     age_seconds = max(0.0, (datetime.now(timezone.utc) - timestamp).total_seconds())
     status = "stale" if age_seconds > STALE_AFTER_SECONDS else "ok"
+    health_result = evaluate_health(
+        rows[0],
+        now=datetime.now(timezone.utc),
+        safe_temp_max_f=SAFE_TEMP_MAX_F,
+        stale_after_seconds=STALE_AFTER_SECONDS,
+        door_open_since=get_door_open_since(DB_PATH),
+        door_open_alert_seconds=DOOR_OPEN_ALERT_SECONDS,
+    )
 
     return StatusResponse(
         status=status,
         age_seconds=round(age_seconds, 1),
         reading=reading,
+        health_level=health_result.level,
+        conditions=list(health_result.conditions),
+        message=health_result.message,
     )
 
 
@@ -78,6 +146,27 @@ def current_status() -> StatusResponse:
 def recent_readings(limit: int = Query(default=50, ge=1, le=500)) -> list[Reading]:
     rows = get_latest_readings(limit=limit, db_path=DB_PATH)
     return [serialize_reading(row) for row in rows]
+
+
+@app.get("/api/images", response_model=ImagesResponse)
+def recent_images() -> ImagesResponse:
+    try:
+        storage = get_image_storage()
+        images = [
+            serialize_image(storage, name)
+            for name in reversed(storage.list_image_names())
+        ]
+    except Exception as error:
+        print(f"Could not load Supabase images: {error}", flush=True)
+        raise HTTPException(
+            status_code=503,
+            detail="Image storage is temporarily unavailable.",
+        ) from error
+
+    return ImagesResponse(
+        latest=images[0] if images else None,
+        history=images[1:],
+    )
 
 
 if __name__ == "__main__":

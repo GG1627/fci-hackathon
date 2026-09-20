@@ -1,0 +1,1 @@
+"""FridgeGuard health rules."""
