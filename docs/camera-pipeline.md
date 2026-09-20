@@ -13,9 +13,9 @@ The root `.env` file must contain:
 SUPABASE_URL=https://your-project.supabase.co
 SUPABASE_SECRET_KEY=your-server-only-secret
 CAMERA_CAPTURE_INTERVAL_SECONDS=600
-CAMERA_IMAGE_WIDTH=1280
-CAMERA_IMAGE_HEIGHT=720
-CAMERA_JPEG_QUALITY=75
+CAMERA_IMAGE_WIDTH=1920
+CAMERA_IMAGE_HEIGHT=1080
+CAMERA_JPEG_QUALITY=90
 ```
 
 Never commit `.env` or expose the secret key in the web application.
@@ -55,11 +55,12 @@ Thirty-second demo interval:
 python3 pi/camera_pipeline.py --interval 30
 ```
 
-You can also override image settings for a test. The defaults are deliberately
-web-friendly: 1280x720 JPEG at quality 75 with no embedded thumbnail.
+You can also override image settings for a test. The defaults balance sharp
+dashboard images with storage use: 1920x1080 JPEG at quality 90, capture-time
+autofocus, and no embedded thumbnail.
 
 ```bash
-python3 pi/camera_pipeline.py --interval 30 --width 1280 --height 720 --quality 75
+python3 pi/camera_pipeline.py --interval 30 --width 1920 --height 1080 --quality 90
 ```
 
 Stop the scheduler with `Ctrl+C`.

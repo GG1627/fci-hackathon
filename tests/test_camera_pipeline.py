@@ -80,10 +80,12 @@ class CameraServiceTests(unittest.TestCase):
         self.assertEqual(image_path.name, "fridge-20260920T190500Z.jpg")
         self.assertEqual(commands[0][0], "rpicam-still")
         self.assertIn("--nopreview", commands[0])
-        self.assertEqual(commands[0][commands[0].index("--width") + 1], "1280")
-        self.assertEqual(commands[0][commands[0].index("--height") + 1], "720")
-        self.assertEqual(commands[0][commands[0].index("--quality") + 1], "75")
+        self.assertEqual(commands[0][commands[0].index("--width") + 1], "1920")
+        self.assertEqual(commands[0][commands[0].index("--height") + 1], "1080")
+        self.assertEqual(commands[0][commands[0].index("--quality") + 1], "90")
         self.assertEqual(commands[0][commands[0].index("--thumb") + 1], "none")
+        self.assertIn("--autofocus-on-capture", commands[0])
+        self.assertEqual(commands[0][commands[0].index("--timeout") + 1], "3000")
 
 
 class ImageStorageTests(unittest.TestCase):

@@ -5,9 +5,9 @@ from pathlib import Path
 
 
 DEFAULT_IMAGE_DIR = Path(__file__).resolve().parents[1] / "data" / "images"
-DEFAULT_IMAGE_WIDTH = 1280
-DEFAULT_IMAGE_HEIGHT = 720
-DEFAULT_JPEG_QUALITY = 75
+DEFAULT_IMAGE_WIDTH = 1920
+DEFAULT_IMAGE_HEIGHT = 1080
+DEFAULT_JPEG_QUALITY = 90
 
 
 class CameraCaptureError(RuntimeError):
@@ -52,8 +52,9 @@ def capture_image(
                 str(quality),
                 "--thumb",
                 "none",
+                "--autofocus-on-capture",
                 "--timeout",
-                "2000",
+                "3000",
                 "--nopreview",
             ],
             check=True,
