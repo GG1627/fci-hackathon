@@ -14,7 +14,6 @@ void setup() {
 
   Wire.begin(SDA_PIN, SCL_PIN);
   if (!tmp117.begin()) {
-    Serial.println("TMP117 not found. Check wiring.");
     while (true) {
       delay(1000);
     }
@@ -26,9 +25,11 @@ void loop() {
   tmp117.getEvent(&temperature);
 
   const float fahrenheit = temperature.temperature * 9.0F / 5.0F + 32.0F;
-  const bool doorClosed = digitalRead(REED_PIN) == LOW;
+  const bool doorOpen = digitalRead(REED_PIN) != LOW;
 
-  Serial.printf("Temp: %.1f F | Door: %s\n", fahrenheit,
-                doorClosed ? "CLOSED" : "OPEN");
+  Serial.printf(
+      "{\"device_id\":\"fridge-sensor-01\",\"temperature_f\":%.1f,"
+      "\"door_open\":%s}\n",
+      fahrenheit, doorOpen ? "true" : "false");
   delay(1000);
 }
