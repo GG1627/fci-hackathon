@@ -1,0 +1,120 @@
+@import "tailwindcss";
+
+:root {
+  --canvas: #edf6fc;
+  --surface: #ffffff;
+  --surface-muted: #f5f9fc;
+  --ink: #12365f;
+  --muted: #526b82;
+  --brand: #1978bd;
+  --brand-deep: #173f73;
+  --line: #d4e2ec;
+  --focus: #8ac8ef;
+  --panel-shadow: 0 12px 32px -22px rgb(18 54 95 / 42%);
+}
+
+@theme inline {
+  --color-canvas: var(--canvas);
+  --color-surface: var(--surface);
+  --color-surface-muted: var(--surface-muted);
+  --color-ink: var(--ink);
+  --color-muted: var(--muted);
+  --color-brand: var(--brand);
+  --color-brand-deep: var(--brand-deep);
+  --color-line: var(--line);
+  --color-focus: var(--focus);
+  --radius-panel: 1rem;
+  --shadow-panel: var(--panel-shadow);
+  --font-sans: "Aptos", "Avenir Next", "Segoe UI", ui-sans-serif, system-ui,
+    sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  background: var(--canvas);
+}
+
+body {
+  min-height: 100vh;
+  margin: 0;
+  background: var(--canvas);
+  color: var(--ink);
+  font-family: var(--font-sans);
+}
+
+button,
+summary {
+  -webkit-tap-highlight-color: transparent;
+}
+
+button:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.data-value {
+  font-variant-numeric: tabular-nums;
+}
+
+.skeleton {
+  background: #dceaf3;
+}
+
+::selection {
+  background: #b9def6;
+  color: var(--ink);
+}
+
+::-webkit-scrollbar {
+  width: 12px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--canvas);
+}
+
+::-webkit-scrollbar-thumb {
+  border: 3px solid var(--canvas);
+  border-radius: 999px;
+  background: #9bb3c5;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .live-pulse {
+    animation: live-pulse 2.4s ease-out infinite;
+  }
+
+  .skeleton {
+    background: linear-gradient(
+      100deg,
+      #dceaf3 30%,
+      #edf5fa 48%,
+      #dceaf3 66%
+    );
+    background-size: 220% 100%;
+    animation: skeleton-shift 1.5s ease-in-out infinite;
+  }
+
+  @keyframes live-pulse {
+    0% {
+      opacity: 0.55;
+      transform: scale(0.8);
+    }
+    75%,
+    100% {
+      opacity: 0;
+      transform: scale(2);
+    }
+  }
+
+  @keyframes skeleton-shift {
+    from {
+      background-position: 100% 0;
+    }
+    to {
+      background-position: -100% 0;
+    }
+  }
+}
