@@ -9,7 +9,6 @@ __pycache__/
 .pio/
 
 # Raspberry Pi runtime data
-pi/data/
 
 # Editors
 .vscode/
