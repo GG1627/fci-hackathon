@@ -2,8 +2,8 @@
 
 The Camera Module 3 pipeline is independent from ESP32 serial logging and
 SQLite. It captures a JPEG with `rpicam-still`, uploads it to the public
-Supabase Storage bucket `fridge-images`, and keeps only the newest three remote
-images.
+Supabase Storage bucket `fridge-images`, and keeps the latest image plus ten
+previous images (11 total).
 
 ## Configuration
 
@@ -75,8 +75,9 @@ Supabase Dashboard so the displayed URL works in a browser.
 
 ## Inspect or clear cloud images
 
-The pipeline automatically deletes images older than the newest three, so the
-bucket does not grow indefinitely. List the managed images with:
+The pipeline automatically deletes images older than the newest 11, so the
+dashboard can show the latest image and ten previous images without the bucket
+growing indefinitely. List the managed images with:
 
 ```bash
 python3 pi/manage_images.py list

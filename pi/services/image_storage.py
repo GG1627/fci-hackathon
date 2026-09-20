@@ -5,7 +5,7 @@ from supabase import Client, create_client
 
 
 BUCKET_NAME = "fridge-images"
-MAX_REMOTE_IMAGES = 3
+MAX_REMOTE_IMAGES = 11
 DELETE_BATCH_SIZE = 100
 IMAGE_NAME_PATTERN = re.compile(r"^fridge-\d{8}T\d{6}Z\.jpg$")
 

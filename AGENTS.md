@@ -34,8 +34,9 @@ Supabase is used only for cloud image storage in the `fridge-images` bucket.
 
 Implement and verify the independent camera pipeline: periodically capture a
 still image, upload it to Supabase Storage with a timestamped name, and retain
-only the newest three remote images. Use size-conscious JPEG settings and keep
-a safe manual image-list/cleanup command. Do not add computer vision yet.
+the latest image plus ten previous images (11 total). Use size-conscious JPEG
+settings and keep a safe manual image-list/cleanup command. Do not add computer
+vision yet.
 
 ## Serial Contract
 
@@ -74,7 +75,7 @@ is stable.
 - Keep serial parsing separate from storage, cloud, alert, and camera logic.
 - Keep the camera pipeline separate from the ESP32 and SQLite sensor pipeline.
 - Do not sync sensor readings to Supabase.
-- Use timestamped image names and retain only the newest three cloud images.
+- Use timestamped image names and retain only the newest 11 cloud images.
 - Do not add login/auth unless absolutely necessary.
 - Use Discord webhooks rather than a full Discord bot.
 - Do not add complex ML while simple OpenCV remains sufficient.

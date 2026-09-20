@@ -87,25 +87,21 @@ class CameraServiceTests(unittest.TestCase):
 
 
 class ImageStorageTests(unittest.TestCase):
-    def test_upload_keeps_only_newest_three_images(self):
-        names = [
-            "fridge-20260920T190000Z.jpg",
-            "fridge-20260920T190100Z.jpg",
-            "fridge-20260920T190200Z.jpg",
-        ]
+    def test_upload_keeps_latest_image_and_ten_previous_images(self):
+        names = [f"fridge-20260920T19{minute:02d}00Z.jpg" for minute in range(11)]
         bucket = FakeBucket(names)
         service = ImageStorageService("url", "key", client=FakeClient(bucket))
         service._bucket_ready = True
 
-        image_path = Path("fridge-20260920T190300Z.jpg")
+        image_path = Path("fridge-20260920T191100Z.jpg")
         public_url = service.upload_image(image_path)
 
         self.assertEqual(
             public_url,
-            "https://example.test/fridge-images/fridge-20260920T190300Z.jpg",
+            "https://example.test/fridge-images/fridge-20260920T191100Z.jpg",
         )
         self.assertEqual(bucket.removed, ["fridge-20260920T190000Z.jpg"])
-        self.assertEqual(len(bucket.names), 3)
+        self.assertEqual(len(bucket.names), 11)
 
     def test_clear_removes_only_timestamped_fridge_images(self):
         names = [
