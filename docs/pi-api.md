@@ -1,4 +1,4 @@
-# FridgeGuard local API
+# Community Chill local API
 
 The API reads sensor data from the Raspberry Pi's local SQLite database. It
 also returns public URLs for camera images stored in Supabase. Supabase secrets
@@ -23,7 +23,8 @@ Health check:
 GET http://localhost:8000/api/health
 ```
 
-Latest reading, freshness, health level, active rule conditions, and message:
+Latest reading, door-open start time, freshness, health level, active rule
+conditions, and message:
 
 ```text
 GET http://localhost:8000/api/status
@@ -74,5 +75,6 @@ hostname or IP address, for example:
 http://gaels-pi-5.local:8000/api/status
 ```
 
-The API allows browser requests from other local development origins so a
-React app can poll `/api/status` every one or two seconds.
+The API allows browser requests from other local development origins. The
+Community Chill dashboard polls `/api/status` and `/api/readings` every five
+seconds and `/api/images` every 30 seconds.

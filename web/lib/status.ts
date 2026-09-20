@@ -1,88 +1,50 @@
-import type { Reading } from "@/lib/types";
+import type { OverallStatus, Reading, StatusResponse } from "@/lib/types";
 
-export const TARGET_DEVICE_ID = "fridge-sensor-01";
 export const POLL_INTERVAL_MS = 5_000;
-export const STALE_AFTER_MS = 2 * 60 * 1_000;
+export const IMAGE_POLL_INTERVAL_MS = 30_000;
 
-// Room-temperature hackathon setting. The production food-safety limit is 40°F.
-export const DEMO_TEMP_MAX_F = 80;
-export const TEMP_ATTENTION_START_F = DEMO_TEMP_MAX_F - 3;
-export const DOOR_OPEN_TOO_LONG_MS = 2 * 60 * 1_000;
+export type DisplayStatus = {
+  kind: OverallStatus;
+  label: string;
+  summary: string;
+};
 
-export function getReadingAgeMs(reading: Reading, nowMs: number): number {
-  return Math.max(0, nowMs - new Date(reading.timestamp).getTime());
-}
-
-export function findDoorOpenedAt(readings: Reading[]): string | null {
-  const newestFirst = [...readings].sort(
-    (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime(),
-  );
-
-  if (!newestFirst[0]?.door_open) return null;
-
-  let openedAt = newestFirst[0].timestamp;
-  for (const reading of newestFirst) {
-    if (!reading.door_open) break;
-    openedAt = reading.timestamp;
-  }
-
-  return openedAt;
-}
-
-export function getOverallStatus(
+export function getDisplayStatus(
+  apiStatus: StatusResponse | null,
   reading: Reading,
-  nowMs: number,
-  doorOpenedAt: string | null,
-) {
-  if (getReadingAgeMs(reading, nowMs) > STALE_AFTER_MS) {
+): DisplayStatus {
+  if (!apiStatus || apiStatus.health_level === "unknown") {
     return {
-      kind: "unknown" as const,
+      kind: "unknown",
       label: "Status unknown",
-      summary: "FridgeGuard may be offline",
+      summary: apiStatus?.message ?? "The Pi health check is unavailable",
     };
   }
 
-  const doorOpenMs =
-    reading.door_open && doorOpenedAt
-      ? Math.max(0, nowMs - new Date(doorOpenedAt).getTime())
-      : 0;
-
-  if (reading.temperature_f > DEMO_TEMP_MAX_F) {
+  if (apiStatus.health_level === "critical") {
     return {
-      kind: "danger" as const,
+      kind: "danger",
       label: "Needs attention",
-      summary: "The temperature is above the demo limit",
+      summary: apiStatus.message,
     };
   }
 
-  if (doorOpenMs >= DOOR_OPEN_TOO_LONG_MS) {
+  if (apiStatus.health_level === "warning" || reading.door_open) {
     return {
-      kind: "danger" as const,
-      label: "Needs attention",
-      summary: "The door has been open too long",
-    };
-  }
-
-  if (reading.door_open) {
-    return {
-      kind: "attention" as const,
-      label: "Attention soon",
-      summary: "The door is currently open",
-    };
-  }
-
-  if (reading.temperature_f > TEMP_ATTENTION_START_F) {
-    return {
-      kind: "attention" as const,
-      label: "Attention soon",
-      summary: "The temperature is nearing the demo limit",
+      kind: "attention",
+      label:
+        apiStatus.health_level === "warning" ? "Check the fridge" : "Door open",
+      summary:
+        apiStatus.health_level === "warning"
+          ? apiStatus.message
+          : "The door is currently open",
     };
   }
 
   return {
-    kind: "good" as const,
+    kind: "good",
     label: "All good",
-    summary: "No check is needed right now",
+    summary: apiStatus.message,
   };
 }
 

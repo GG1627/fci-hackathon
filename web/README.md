@@ -1,35 +1,40 @@
-# FridgeGuard dashboard
+# Community Chill dashboard
 
-Display-only Next.js dashboard for the Gainesville Community Fridge. It requests real sensor data from the Raspberry Pi FastAPI service and refreshes every five seconds.
+The Next.js dashboard displays live sensor health from the Raspberry Pi's local
+SQLite database and the newest camera images from Supabase Storage. The browser
+only talks to the Pi API; Supabase credentials remain on the Pi.
 
-## Start both services
+## Start the complete Pi service
 
-Start the Pi API from the repository root:
+From the repository root on the Raspberry Pi:
 
 ```bash
 python3 -m pip install -r requirements.txt
-python3 pi/api.py
+python3 pi/main.py
 ```
 
-Then start the dashboard from `web/`:
+This starts serial logging, the local API, periodic camera capture, and Discord
+alerts when their environment variables are configured.
+
+## Start the dashboard
+
+From `web/` on either the Pi or another computer on the same network:
 
 ```bash
 npm install
 npm run dev
 ```
 
-Open <http://localhost:3000>.
+Open <http://localhost:3000>. By default, the browser uses port `8000` on the
+same hostname used to open the dashboard. For example, opening
+`http://gaels-pi-5.local:3000` makes the browser call
+`http://gaels-pi-5.local:8000`.
 
-By default, the browser connects to port `8000` on the same hostname used to open the dashboard. For example, a dashboard opened at `http://gaels-pi-5.local:3000` automatically requests `http://gaels-pi-5.local:8000/api/readings`.
+If the dashboard and API use different hosts, copy `.env.example` to
+`.env.local`, set `NEXT_PUBLIC_FRIDGEGUARD_API_URL`, and restart Next.js.
+This URL is public browser configuration; never add a Supabase secret key to
+`web/.env.local`.
 
-If the API runs at another address, copy `.env.example` to `.env.local`, set `NEXT_PUBLIC_FRIDGEGUARD_API_URL`, and restart the Next.js development server.
-
-The dashboard requests up to 300 recent readings, prefers `device_id = 'fridge-sensor-01'`, and falls back to the most recent available device. The recent readings provide the current closed-to-open door transition for the live timer.
-
-## Demo thresholds
-
-- Maximum temperature: 80°F (`DEMO_TEMP_MAX_F`)
-- Door-open danger: 2 minutes (`DOOR_OPEN_TOO_LONG_MS`)
-- Stale/offline: 2 minutes (`STALE_AFTER_MS`)
-
-These named constants are in `lib/status.ts`. The frontend derives its two-minute demo stale state from the reading timestamp rather than using the Pi API's ten-second status indicator. The production refrigerator temperature threshold should be 40°F.
+The dashboard polls sensor readings and server-side health rules every five
+seconds. Camera images refresh every 30 seconds. The latest image and up to ten
+previous images are available in the gallery.

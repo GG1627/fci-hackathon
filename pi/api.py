@@ -37,6 +37,7 @@ class StatusResponse(BaseModel):
     status: Literal["ok", "stale", "no_data"]
     age_seconds: float | None
     reading: Reading | None
+    door_open_since: str | None
     health_level: Literal["good", "warning", "critical", "unknown"]
     conditions: list[str]
     message: str
@@ -53,7 +54,7 @@ class ImagesResponse(BaseModel):
     history: list[ImageItem]
 
 
-app = FastAPI(title="FridgeGuard Local API", version="1.0.0")
+app = FastAPI(title="Community Chill Local API", version="1.0.0")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -112,6 +113,7 @@ def current_status() -> StatusResponse:
             status="no_data",
             age_seconds=None,
             reading=None,
+            door_open_since=None,
             health_level=health_result.level,
             conditions=list(health_result.conditions),
             message=health_result.message,
@@ -123,12 +125,13 @@ def current_status() -> StatusResponse:
         timestamp = timestamp.replace(tzinfo=timezone.utc)
     age_seconds = max(0.0, (datetime.now(timezone.utc) - timestamp).total_seconds())
     status = "stale" if age_seconds > STALE_AFTER_SECONDS else "ok"
+    door_open_since = get_door_open_since(DB_PATH)
     health_result = evaluate_health(
         rows[0],
         now=datetime.now(timezone.utc),
         safe_temp_max_f=SAFE_TEMP_MAX_F,
         stale_after_seconds=STALE_AFTER_SECONDS,
-        door_open_since=get_door_open_since(DB_PATH),
+        door_open_since=door_open_since,
         door_open_alert_seconds=DOOR_OPEN_ALERT_SECONDS,
     )
 
@@ -136,6 +139,7 @@ def current_status() -> StatusResponse:
         status=status,
         age_seconds=round(age_seconds, 1),
         reading=reading,
+        door_open_since=door_open_since,
         health_level=health_result.level,
         conditions=list(health_result.conditions),
         message=health_result.message,

@@ -34,7 +34,7 @@ def evaluate_health(
         return HealthResult(
             level="unknown",
             conditions=("NO_DATA",),
-            title="FridgeGuard has no sensor data",
+            title="Community Chill has no sensor data",
             message="No ESP32 readings are available. Check the sensor connection.",
         )
 
@@ -44,7 +44,7 @@ def evaluate_health(
         return HealthResult(
             level="unknown",
             conditions=("DEVICE_OFFLINE",),
-            title="FridgeGuard sensor data is stale",
+            title="Community Chill sensor data is stale",
             message=(
                 f"The latest ESP32 reading is {age_seconds:.0f} seconds old. "
                 "Current fridge status is unknown."
@@ -94,7 +94,7 @@ def evaluate_health(
     return HealthResult(
         level="good",
         conditions=(),
-        title="FridgeGuard is healthy",
+        title="Community Chill is healthy",
         message=(
             f"Temperature is {temperature_f:.1f} F and the door is "
             f"{'open' if door_open else 'closed'}."

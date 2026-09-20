@@ -84,7 +84,7 @@ class AlertTrackerTests(unittest.TestCase):
         self.assertIsNone(tracker.action_for(problem, 120))
         self.assertEqual(tracker.action_for(problem, 161), "alert")
         self.assertEqual(tracker.action_for(healthy, 120), "recovery")
-        self.assertEqual(recovery_result(healthy).title, "FridgeGuard recovered")
+        self.assertEqual(recovery_result(healthy).title, "Community Chill recovered")
 
 
 class DiscordWebhookTests(unittest.TestCase):
@@ -153,6 +153,7 @@ class ImageApiTests(unittest.TestCase):
         self.assertEqual(response.status, "ok")
         self.assertEqual(response.health_level, "critical")
         self.assertEqual(response.conditions, ["TEMP_HIGH"])
+        self.assertIsNone(response.door_open_since)
 
 
 class LauncherTests(unittest.TestCase):

@@ -102,7 +102,7 @@ def recovery_result(current: HealthResult) -> HealthResult:
     return HealthResult(
         level="good",
         conditions=(),
-        title="FridgeGuard recovered",
+        title="Community Chill recovered",
         message=current.message,
     )
 
@@ -149,7 +149,7 @@ def monitor(settings: AlertSettings) -> None:
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Monitor FridgeGuard health alerts.")
+    parser = argparse.ArgumentParser(description="Monitor Community Chill health alerts.")
     parser.add_argument(
         "--test",
         action="store_true",
@@ -169,7 +169,7 @@ def main() -> None:
         test_result = HealthResult(
             level="good",
             conditions=(),
-            title="FridgeGuard test alert",
+            title="Community Chill test alert",
             message="Discord webhook connectivity is working.",
         )
         try:

@@ -44,7 +44,7 @@ def send_discord_alert(
         "description": result.message,
         "color": COLORS[result.level],
         "timestamp": datetime.now(timezone.utc).isoformat(),
-        "footer": {"text": "FridgeGuard"},
+        "footer": {"text": "Community Chill"},
     }
     if image_url:
         embed["image"] = {"url": image_url}
@@ -54,7 +54,7 @@ def send_discord_alert(
             normalize_webhook_url(webhook_url),
             params={"wait": "true"},
             json={
-                "username": "FridgeGuard",
+                "username": "Community Chill",
                 "allowed_mentions": {"parse": []},
                 "embeds": [embed],
             },

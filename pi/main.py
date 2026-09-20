@@ -13,7 +13,7 @@ PI_DIR = ROOT_DIR / "pi"
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Run the FridgeGuard Pi services.")
+    parser = argparse.ArgumentParser(description="Run the Community Chill Pi services.")
     parser.add_argument(
         "--camera-interval",
         type=float,
@@ -90,7 +90,7 @@ def main() -> None:
             process = subprocess.Popen(command, cwd=ROOT_DIR)
             processes.append((name, process))
 
-        print("FridgeGuard is running. Press Ctrl+C to stop all services.", flush=True)
+        print("Community Chill is running. Press Ctrl+C to stop all services.", flush=True)
         while True:
             for name, process in processes:
                 exit_code = process.poll()
@@ -100,7 +100,7 @@ def main() -> None:
                     )
             time.sleep(1)
     except KeyboardInterrupt:
-        print("\nStopping FridgeGuard...", flush=True)
+        print("\nStopping Community Chill...", flush=True)
     except RuntimeError as error:
         print(error, flush=True)
         failed = True

@@ -1,8 +1,9 @@
-# FridgeGuard Agent Guide
+# Community Chill Agent Guide
 
 ## Project
 
-FridgeGuard monitors the Gainesville Community Fridge. Read
+Community Chill (internally developed as FridgeGuard) monitors the Gainesville
+Community Fridge. Read
 `FRIDGEGUARD_PLAN_UPDATED.md` before making architectural decisions.
 
 ## Confirmed Working State
@@ -21,6 +22,8 @@ FridgeGuard monitors the Gainesville Community Fridge. Read
 - The local API exposes current/recent SQLite readings and Supabase image URLs.
 - Health rules, alert rate limiting, and the one-command Pi launcher have
   automated test coverage.
+- The web dashboard consumes the Pi status, readings, and image endpoints.
+- The dashboard shows the latest image plus ten previous camera captures.
 
 Completed pipeline:
 
@@ -37,8 +40,8 @@ Supabase is used only for cloud image storage in the `fridge-images` bucket.
 
 ## Current Task
 
-Verify the one-command launcher and Discord webhook alerts on the Raspberry Pi.
-Do not add computer vision yet.
+Verify the integrated launcher, dashboard, camera gallery, and Discord webhook
+alerts against the Raspberry Pi hardware. Do not add computer vision yet.
 
 ## Serial Contract
 
@@ -60,10 +63,10 @@ Raspberry Pi parser.
 ESP32 sensing, Raspberry Pi serial parsing, and SQLite logging are complete.
 Continue in this order:
 
-1. Image API, Pi launcher, health rules, and Discord alerts (current)
-2. Web dashboard (being developed separately)
-3. Stock estimation
-4. Polish and documentation
+1. Verify the integrated Pi launcher, dashboard, camera gallery, and alerts
+   (current)
+2. Stock estimation
+3. Polish and documentation
 
 Do not move to stretch features until the core sensor-to-local-storage pipeline
 is stable.

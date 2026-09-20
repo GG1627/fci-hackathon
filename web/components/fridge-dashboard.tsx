@@ -1,13 +1,18 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+/* eslint-disable @next/next/no-img-element */
+
+import { useCallback, useEffect, useState } from "react";
 import {
   AlertCircle,
+  Camera,
   Check,
   ChevronDown,
   Clock3,
   DoorClosed,
   DoorOpen,
+  ExternalLink,
+  ImageOff,
   Info,
   MapPin,
   Radio,
@@ -19,17 +24,20 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import {
-  DEMO_TEMP_MAX_F,
-  findDoorOpenedAt,
   formatDuration,
   formatReadingTime,
   formatRelativeTime,
-  getOverallStatus,
-  getReadingAgeMs,
+  getDisplayStatus,
+  IMAGE_POLL_INTERVAL_MS,
   POLL_INTERVAL_MS,
-  STALE_AFTER_MS,
 } from "@/lib/status";
-import type { OverallStatus, Reading } from "@/lib/types";
+import type {
+  ImageItem,
+  ImagesResponse,
+  OverallStatus,
+  Reading,
+  StatusResponse,
+} from "@/lib/types";
 
 const statusStyles: Record<
   OverallStatus,
@@ -73,34 +81,52 @@ const statusStyles: Record<
 
 type DashboardState = {
   readings: Reading[];
+  status: StatusResponse | null;
+  readingsError: string | null;
+  statusError: string | null;
+  loading: boolean;
+  lastFetchAt: number | null;
+};
+
+type ImageState = {
+  data: ImagesResponse | null;
   error: string | null;
   loading: boolean;
-  refreshing: boolean;
-  lastFetchAt: number | null;
 };
 
 type ConnectionState = "connecting" | "online" | "offline";
 
 const initialState: DashboardState = {
   readings: [],
-  error: null,
+  status: null,
+  readingsError: null,
+  statusError: null,
   loading: true,
-  refreshing: false,
   lastFetchAt: null,
 };
 
-async function fetchReadings(): Promise<Reading[]> {
+const initialImageState: ImageState = {
+  data: null,
+  error: null,
+  loading: true,
+};
+
+function getApiBaseUrl(): string {
   const configuredUrl = process.env.NEXT_PUBLIC_FRIDGEGUARD_API_URL?.replace(
     /\/+$/,
     "",
   );
-  const apiBaseUrl =
-    configuredUrl ||
-    `${window.location.protocol}//${window.location.hostname}:8000`;
+  return (
+    configuredUrl || `${window.location.protocol}//${window.location.hostname}:8000`
+  );
+}
+
+async function fetchApi<T>(path: string): Promise<T> {
+  const apiBaseUrl = getApiBaseUrl();
 
   let response: Response;
   try {
-    response = await fetch(`${apiBaseUrl}/api/readings?limit=300`, {
+    response = await fetch(`${apiBaseUrl}${path}`, {
       cache: "no-store",
     });
   } catch {
@@ -109,12 +135,21 @@ async function fetchReadings(): Promise<Reading[]> {
     );
   }
 
-  const payload = (await response.json()) as Reading[] | { detail?: string };
+  const payload = (await response.json()) as T | { detail?: string };
 
   if (!response.ok) {
-    const detail = Array.isArray(payload) ? null : payload.detail;
+    const detail =
+      payload && typeof payload === "object" && "detail" in payload
+        ? payload.detail
+        : null;
     throw new Error(detail ?? `The Pi API returned HTTP ${response.status}.`);
   }
+
+  return payload as T;
+}
+
+async function fetchReadings(): Promise<Reading[]> {
+  const payload = await fetchApi<Reading[]>("/api/readings?limit=50");
 
   if (!Array.isArray(payload)) {
     throw new Error("The Pi API returned an unexpected response.");
@@ -126,94 +161,140 @@ async function fetchReadings(): Promise<Reading[]> {
   return preferredReadings.length > 0 ? preferredReadings : payload;
 }
 
+function fetchStatus(): Promise<StatusResponse> {
+  return fetchApi<StatusResponse>("/api/status");
+}
+
+function fetchImages(): Promise<ImagesResponse> {
+  return fetchApi<ImagesResponse>("/api/images");
+}
+
 export function FridgeDashboard() {
   const [state, setState] = useState<DashboardState>(initialState);
+  const [imageState, setImageState] = useState<ImageState>(initialImageState);
+  const [refreshing, setRefreshing] = useState(false);
+  const [selectedImageName, setSelectedImageName] = useState<string | null>(null);
   const [nowMs, setNowMs] = useState(() => Date.now());
 
-  const loadReadings = useCallback(async (isManual = false) => {
-    setState((current) => ({
-      ...current,
-      error: null,
-      refreshing: isManual,
-    }));
+  const loadSensorData = useCallback(async () => {
+    const [readingsResult, statusResult] = await Promise.allSettled([
+      fetchReadings(),
+      fetchStatus(),
+    ]);
 
+    setState((current) => ({
+      readings:
+        readingsResult.status === "fulfilled"
+          ? readingsResult.value
+          : current.readings,
+      status:
+        statusResult.status === "fulfilled" ? statusResult.value : null,
+      readingsError:
+        readingsResult.status === "rejected"
+          ? readingsResult.reason instanceof Error
+            ? readingsResult.reason.message
+            : "Unable to reach the Pi API."
+          : null,
+      statusError:
+        statusResult.status === "rejected"
+          ? "The Pi health evaluation is temporarily unavailable."
+          : null,
+      loading: false,
+      lastFetchAt:
+        readingsResult.status === "fulfilled" ? Date.now() : current.lastFetchAt,
+    }));
+  }, []);
+
+  const loadImages = useCallback(async () => {
     try {
-      const readings = await fetchReadings();
-      setState({
-        readings,
-        error: null,
-        loading: false,
-        refreshing: false,
-        lastFetchAt: Date.now(),
-      });
+      const data = await fetchImages();
+      setImageState({ data, error: null, loading: false });
     } catch (error) {
-      setState((current) => ({
+      setImageState((current) => ({
         ...current,
         error:
           error instanceof Error
             ? error.message
-            : "Unable to reach the Pi API.",
+            : "Unable to load camera images.",
         loading: false,
-        refreshing: false,
-        lastFetchAt: Date.now(),
       }));
     }
   }, []);
 
+  const refreshAll = useCallback(async () => {
+    setRefreshing(true);
+    await Promise.allSettled([loadSensorData(), loadImages()]);
+    setRefreshing(false);
+  }, [loadImages, loadSensorData]);
+
   useEffect(() => {
-    void loadReadings();
+    void loadSensorData();
+    void loadImages();
     const pollingTimer = window.setInterval(
-      () => void loadReadings(),
+      () => void loadSensorData(),
       POLL_INTERVAL_MS,
+    );
+    const imagePollingTimer = window.setInterval(
+      () => void loadImages(),
+      IMAGE_POLL_INTERVAL_MS,
     );
     const clockTimer = window.setInterval(() => setNowMs(Date.now()), 1_000);
 
     return () => {
       window.clearInterval(pollingTimer);
+      window.clearInterval(imagePollingTimer);
       window.clearInterval(clockTimer);
     };
-  }, [loadReadings]);
+  }, [loadImages, loadSensorData]);
 
   const reading = state.readings[0] ?? null;
-  const doorOpenedAt = useMemo(
-    () => findDoorOpenedAt(state.readings),
-    [state.readings],
-  );
-  const status = reading
-    ? getOverallStatus(reading, nowMs, doorOpenedAt)
-    : null;
+  const doorOpenedAt = state.status?.door_open_since ?? null;
+  const status = reading ? getDisplayStatus(state.status, reading) : null;
+  const images = imageState.data
+    ? [imageState.data.latest, ...imageState.data.history].filter(
+        (image): image is ImageItem => image !== null,
+      )
+    : [];
+  const selectedImage =
+    images.find((image) => image.name === selectedImageName) ?? images[0] ?? null;
   const connectionState: ConnectionState = state.loading
     ? "connecting"
-    : state.error
+    : state.readingsError
       ? "offline"
       : "online";
 
   return (
     <main className="min-h-screen">
       <Header
-        refreshing={state.refreshing}
+        refreshing={refreshing}
         lastFetchAt={state.lastFetchAt}
         connectionState={connectionState}
-        onRefresh={() => void loadReadings(true)}
+        onRefresh={() => void refreshAll()}
       />
 
       <div className="mx-auto w-full max-w-6xl px-4 py-7 sm:px-7 sm:py-9 lg:px-8">
         {state.loading ? (
           <LoadingState />
-        ) : state.error && !reading ? (
+        ) : state.readingsError && !reading ? (
           <ErrorState
-            message={state.error}
-            onRetry={() => void loadReadings(true)}
+            message={state.readingsError}
+            onRetry={() => void refreshAll()}
           />
         ) : !reading ? (
-          <EmptyState onRetry={() => void loadReadings(true)} />
+          <EmptyState onRetry={() => void refreshAll()} />
         ) : (
           <DashboardContent
             reading={reading}
             doorOpenedAt={doorOpenedAt}
             nowMs={nowMs}
             status={status!}
-            backgroundError={state.error}
+            apiStatus={state.status}
+            backgroundError={state.readingsError ?? state.statusError}
+            images={images}
+            selectedImage={selectedImage}
+            imageError={imageState.error}
+            imagesLoading={imageState.loading}
+            onSelectImage={setSelectedImageName}
           />
         )}
       </div>
@@ -244,9 +325,9 @@ function Header({
         <div className="flex min-w-0 items-center gap-4">
           <div
             className="shrink-0 text-xl font-extrabold tracking-[-0.025em] text-brand sm:text-2xl"
-            aria-label="FridgeGuard"
+            aria-label="Community Chill"
           >
-            <span className="font-semibold text-sky-400">[</span> FridgeGuard{" "}
+            <span className="font-semibold text-sky-400">[</span> Community Chill{" "}
             <span className="font-semibold text-sky-400">]</span>
           </div>
           <div className="hidden h-8 w-px bg-line sm:block" />
@@ -307,21 +388,33 @@ function DashboardContent({
   doorOpenedAt,
   nowMs,
   status,
+  apiStatus,
   backgroundError,
+  images,
+  selectedImage,
+  imageError,
+  imagesLoading,
+  onSelectImage,
 }: {
   reading: Reading;
   doorOpenedAt: string | null;
   nowMs: number;
-  status: ReturnType<typeof getOverallStatus>;
+  status: ReturnType<typeof getDisplayStatus>;
+  apiStatus: StatusResponse | null;
   backgroundError: string | null;
+  images: ImageItem[];
+  selectedImage: ImageItem | null;
+  imageError: string | null;
+  imagesLoading: boolean;
+  onSelectImage: (name: string) => void;
 }) {
   const styles = statusStyles[status.kind];
   const StatusIcon = styles.icon;
-  const stale = getReadingAgeMs(reading, nowMs) > STALE_AFTER_MS;
+  const stale = apiStatus?.status !== "ok";
   const doorDurationMs = doorOpenedAt
     ? Math.max(0, nowMs - new Date(doorOpenedAt).getTime())
     : 0;
-  const temperatureSafe = reading.temperature_f <= DEMO_TEMP_MAX_F;
+  const temperatureHigh = apiStatus?.conditions.includes("TEMP_HIGH") ?? false;
 
   return (
     <>
@@ -330,7 +423,7 @@ function DashboardContent({
           Gainesville Community Fridge
         </h1>
         <p className="mt-2 max-w-2xl text-base leading-7 text-muted">
-          Live temperature, door, and connection status for volunteers.
+          Live temperature, door, connection status, and camera views for volunteers.
         </p>
       </section>
 
@@ -416,25 +509,25 @@ function DashboardContent({
             iconClass={
               stale
                 ? "text-slate-500"
-                : temperatureSafe
-                  ? "text-brand"
-                  : "text-red-700"
+                : temperatureHigh
+                  ? "text-red-700"
+                  : "text-brand"
             }
             value={`${reading.temperature_f.toFixed(1)} °F`}
             detail={
-              stale ? "Last recorded reading" : temperatureSafe ? "Safe" : "Warning"
+              stale ? "Last recorded reading" : temperatureHigh ? "Warning" : "Safe"
             }
             detailClass={
               stale
                 ? "text-slate-600"
-                : temperatureSafe
-                  ? "text-emerald-700"
-                  : "text-red-700"
+                : temperatureHigh
+                  ? "text-red-700"
+                  : "text-emerald-700"
             }
             footer={
               stale
                 ? "Current safety status unknown"
-                : `Demo limit: ${DEMO_TEMP_MAX_F} °F`
+                : "Safety limit configured on the Pi"
             }
           />
 
@@ -479,7 +572,7 @@ function DashboardContent({
             value={formatRelativeTime(reading.timestamp, nowMs)}
             detail={
               stale
-                ? "FridgeGuard may be offline"
+                ? "Community Chill may be offline"
                 : formatReadingTime(reading.timestamp)
             }
             detailClass={stale ? "text-slate-700" : "text-muted"}
@@ -518,12 +611,159 @@ function DashboardContent({
         </details>
       </section>
 
+      <CameraGallery
+        images={images}
+        selectedImage={selectedImage}
+        error={imageError}
+        loading={imagesLoading}
+        nowMs={nowMs}
+        onSelect={onSelectImage}
+      />
+
       <p className="mt-5 text-center text-xs leading-5 text-muted">
-        FridgeGuard checks the Pi API every {POLL_INTERVAL_MS / 1_000} seconds.
-        Status becomes unknown after {STALE_AFTER_MS / 60_000} minutes without
-        data.
+        Community Chill checks sensor data every {POLL_INTERVAL_MS / 1_000}{" "}
+        seconds and camera images every {IMAGE_POLL_INTERVAL_MS / 1_000} seconds.
       </p>
     </>
+  );
+}
+
+function CameraGallery({
+  images,
+  selectedImage,
+  error,
+  loading,
+  nowMs,
+  onSelect,
+}: {
+  images: ImageItem[];
+  selectedImage: ImageItem | null;
+  error: string | null;
+  loading: boolean;
+  nowMs: number;
+  onSelect: (name: string) => void;
+}) {
+  const selectedIsLatest = selectedImage?.name === images[0]?.name;
+
+  return (
+    <section
+      className="mt-4 overflow-hidden rounded-panel bg-surface shadow-panel"
+      aria-labelledby="camera-view"
+    >
+      <div className="flex flex-col gap-1 border-b border-line px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+        <h2 id="camera-view" className="flex items-center gap-2 text-base font-bold text-ink">
+          <Camera className="h-4 w-4 text-brand" aria-hidden="true" />
+          Fridge camera
+        </h2>
+        {images[0] && (
+          <p className="text-sm text-muted">
+            Latest capture {formatRelativeTime(images[0].timestamp, nowMs)}
+          </p>
+        )}
+      </div>
+
+      {error && (
+        <div
+          className="flex items-start gap-3 border-b border-amber-200 bg-amber-50 px-5 py-3 text-sm font-medium text-amber-950 sm:px-6"
+          role="status"
+        >
+          <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+          {images.length > 0
+            ? "Camera refresh failed. Showing the images already loaded."
+            : error}
+        </div>
+      )}
+
+      {loading && !selectedImage ? (
+        <div className="p-5 sm:p-6">
+          <div className="skeleton aspect-video w-full rounded-xl" />
+        </div>
+      ) : !selectedImage ? (
+        <div className="flex flex-col items-center px-6 py-12 text-center">
+          <span className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-sky-50 text-brand">
+            <ImageOff className="h-6 w-6" aria-hidden="true" />
+          </span>
+          <h3 className="text-lg font-bold text-ink">Waiting for a camera image</h3>
+          <p className="mt-2 max-w-lg text-sm leading-6 text-muted">
+            Images will appear here after the Pi captures and uploads its first
+            photo.
+          </p>
+        </div>
+      ) : (
+        <>
+          <div className="grid lg:grid-cols-[minmax(0,2fr)_minmax(16rem,1fr)]">
+            <div className="bg-slate-950">
+              <img
+                src={selectedImage.url}
+                alt={`Community fridge captured ${formatReadingTime(selectedImage.timestamp)}`}
+                className="aspect-video h-full w-full object-cover"
+              />
+            </div>
+            <div className="flex flex-col justify-center border-line p-5 lg:border-l lg:p-6">
+              <p className="text-xs font-bold tracking-[0.1em] text-muted uppercase">
+                {selectedIsLatest ? "Latest image" : "Previous image"}
+              </p>
+              <h3 className="mt-2 text-xl font-bold text-ink">
+                {formatReadingTime(selectedImage.timestamp)}
+              </h3>
+              <p className="mt-2 text-sm leading-6 text-muted">
+                Captured {formatRelativeTime(selectedImage.timestamp, nowMs)} by
+                the Raspberry Pi Camera Module 3.
+              </p>
+              <a
+                href={selectedImage.url}
+                target="_blank"
+                rel="noreferrer"
+                className="mt-5 inline-flex min-h-11 w-fit items-center gap-2 rounded-full bg-brand-deep px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-ink focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-focus"
+              >
+                Open full-size
+                <ExternalLink className="h-4 w-4" aria-hidden="true" />
+              </a>
+            </div>
+          </div>
+
+          <div className="border-t border-line px-5 py-4 sm:px-6">
+            <div className="flex items-center justify-between gap-4">
+              <h3 className="text-sm font-bold text-ink">Recent captures</h3>
+              <p className="text-xs text-muted">
+                {images.length} image{images.length === 1 ? "" : "s"} available
+              </p>
+            </div>
+            <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
+              {images.map((image, index) => {
+                const selected = image.name === selectedImage.name;
+                return (
+                  <button
+                    key={image.name}
+                    type="button"
+                    onClick={() => onSelect(image.name)}
+                    aria-label={`View image captured ${formatReadingTime(image.timestamp)}`}
+                    aria-pressed={selected}
+                    className={`overflow-hidden rounded-xl border-2 bg-surface-muted text-left transition-colors focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-focus ${
+                      selected
+                        ? "border-brand"
+                        : "border-transparent hover:border-line"
+                    }`}
+                  >
+                    <img
+                      src={image.url}
+                      alt=""
+                      loading={index === 0 ? "eager" : "lazy"}
+                      className="aspect-video w-full object-cover"
+                    />
+                    <span className="block truncate px-2 py-1.5 text-xs font-semibold text-ink">
+                      {index === 0
+                        ? "Latest"
+                        : formatRelativeTime(image.timestamp, nowMs)}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </>
+      )}
+    </section>
   );
 }
 
