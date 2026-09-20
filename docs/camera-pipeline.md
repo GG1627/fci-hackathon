@@ -15,7 +15,7 @@ SUPABASE_SECRET_KEY=your-server-only-secret
 CAMERA_CAPTURE_INTERVAL_SECONDS=600
 CAMERA_IMAGE_WIDTH=1920
 CAMERA_IMAGE_HEIGHT=1080
-CAMERA_JPEG_QUALITY=90
+CAMERA_JPEG_QUALITY=100
 ```
 
 Never commit `.env` or expose the secret key in the web application.
@@ -56,11 +56,11 @@ python3 pi/camera_pipeline.py --interval 30
 ```
 
 You can also override image settings for a test. The defaults balance sharp
-dashboard images with storage use: 1920x1080 JPEG at quality 90, capture-time
-autofocus, and no embedded thumbnail.
+dashboard images with storage use: 1920x1080 JPEG at maximum quality 100, a
+full-range capture-time autofocus cycle, and no embedded thumbnail.
 
 ```bash
-python3 pi/camera_pipeline.py --interval 30 --width 1920 --height 1080 --quality 90
+python3 pi/camera_pipeline.py --interval 30 --width 1920 --height 1080 --quality 100
 ```
 
 Stop the scheduler with `Ctrl+C`.

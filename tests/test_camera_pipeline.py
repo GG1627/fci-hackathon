@@ -82,10 +82,16 @@ class CameraServiceTests(unittest.TestCase):
         self.assertIn("--nopreview", commands[0])
         self.assertEqual(commands[0][commands[0].index("--width") + 1], "1920")
         self.assertEqual(commands[0][commands[0].index("--height") + 1], "1080")
-        self.assertEqual(commands[0][commands[0].index("--quality") + 1], "90")
+        self.assertEqual(commands[0][commands[0].index("--quality") + 1], "100")
         self.assertEqual(commands[0][commands[0].index("--thumb") + 1], "none")
+        self.assertEqual(
+            commands[0][commands[0].index("--autofocus-mode") + 1], "auto"
+        )
+        self.assertEqual(
+            commands[0][commands[0].index("--autofocus-range") + 1], "full"
+        )
         self.assertIn("--autofocus-on-capture", commands[0])
-        self.assertEqual(commands[0][commands[0].index("--timeout") + 1], "3000")
+        self.assertEqual(commands[0][commands[0].index("--timeout") + 1], "5000")
 
 
 class ImageStorageTests(unittest.TestCase):
