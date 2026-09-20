@@ -12,18 +12,20 @@ FridgeGuard monitors the Gainesville Community Fridge. Read
 - The ESP32 sends one newline-delimited JSON object per second at 115200 baud.
 - The Raspberry Pi detects the ESP32 at `/dev/ttyUSB0`.
 - Raspberry Pi serial parsing is working reliably.
+- Every valid reading is stored in the local SQLite database.
+- The latest stored readings can be read back successfully on the Raspberry Pi.
 
 Completed pipeline:
 
 ```text
-TMP117 + reed switch -> ESP32 -> USB serial JSON -> Raspberry Pi parser
+TMP117 + reed switch -> ESP32 -> USB serial JSON -> Raspberry Pi parser -> SQLite
 ```
 
 ## Current Task
 
-Implement and verify local SQLite logging on the Raspberry Pi. Every valid
-serial reading must be stored locally before cloud sync or other downstream
-features are added.
+Implement Supabase sync from the Raspberry Pi. SQLite logging is complete and
+must remain the first destination for every valid reading so data is retained
+when cloud connectivity is unavailable.
 
 ## Serial Contract
 
@@ -42,17 +44,16 @@ Raspberry Pi parser.
 
 ## Build Order
 
-ESP32 sensing and Raspberry Pi serial parsing are complete. Continue in this
-order:
+ESP32 sensing, Raspberry Pi serial parsing, and SQLite logging are complete.
+Continue in this order:
 
-1. SQLite logging (current)
-2. Supabase sync
-3. Web dashboard
-4. Discord webhook alerts
-5. Offline retry and queued sync
-6. Camera capture
-7. Stock estimation
-8. Polish and documentation
+1. Supabase sync (current)
+2. Web dashboard
+3. Discord webhook alerts
+4. Offline retry and queued sync
+5. Camera capture
+6. Stock estimation
+7. Polish and documentation
 
 Do not move to stretch features until the core sensor-to-local-storage pipeline
 is stable.
