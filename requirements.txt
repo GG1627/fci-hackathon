@@ -2,3 +2,5 @@ pyserial
 requests
 python-dotenv
 supabase
+fastapi
+uvicorn

@@ -21,11 +21,15 @@ Completed pipeline:
 TMP117 + reed switch -> ESP32 -> USB serial JSON -> Raspberry Pi parser -> SQLite
 ```
 
+Sensor readings remain local in SQLite. Supabase code is retained for a
+possible later camera-image upload feature, but Supabase is not required for
+the local sensor dashboard.
+
 ## Current Task
 
-Implement Supabase sync from the Raspberry Pi. SQLite logging is complete and
-must remain the first destination for every valid reading so data is retained
-when cloud connectivity is unavailable.
+Implement and verify a read-only local API on the Raspberry Pi so a future
+React dashboard can display current and recent SQLite readings. Do not build
+the React frontend yet.
 
 ## Serial Contract
 
@@ -47,11 +51,11 @@ Raspberry Pi parser.
 ESP32 sensing, Raspberry Pi serial parsing, and SQLite logging are complete.
 Continue in this order:
 
-1. Supabase sync (current)
+1. Local SQLite API (current)
 2. Web dashboard
 3. Discord webhook alerts
-4. Offline retry and queued sync
-5. Camera capture
+4. Camera capture
+5. Optional Supabase image upload
 6. Stock estimation
 7. Polish and documentation
 
