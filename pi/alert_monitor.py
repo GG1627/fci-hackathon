@@ -24,29 +24,54 @@ class AlertSettings:
     door_open_alert_seconds: float
     reading_stale_after_seconds: float
     cooldown_seconds: float
+    trigger_after_seconds: float
     poll_interval_seconds: float
     startup_grace_seconds: float
 
 
 class AlertTracker:
-    def __init__(self, cooldown_seconds: float) -> None:
+    def __init__(
+        self,
+        cooldown_seconds: float,
+        trigger_after_seconds: float = 0.0,
+    ) -> None:
         self.cooldown_seconds = cooldown_seconds
+        self.trigger_after_seconds = trigger_after_seconds
         self.active_conditions: tuple[str, ...] = ()
         self.last_sent_at: float | None = None
+        self.pending_conditions: tuple[str, ...] = ()
+        self.pending_since: float | None = None
+
+    def clear_pending(self) -> None:
+        self.pending_conditions = ()
+        self.pending_since = None
 
     def action_for(self, result: HealthResult, now: float) -> str | None:
         if result.conditions:
             changed = result.conditions != self.active_conditions
+            if changed:
+                if result.conditions != self.pending_conditions:
+                    self.pending_conditions = result.conditions
+                    self.pending_since = now
+                assert self.pending_since is not None
+                if now - self.pending_since < self.trigger_after_seconds:
+                    return None
+                return "alert"
+
+            self.clear_pending()
             cooldown_elapsed = (
                 self.last_sent_at is None
                 or now - self.last_sent_at >= self.cooldown_seconds
             )
-            return "alert" if changed or cooldown_elapsed else None
+            return "alert" if cooldown_elapsed else None
+
+        self.clear_pending()
         return "recovery" if self.active_conditions else None
 
     def mark_sent(self, result: HealthResult, now: float) -> None:
         self.active_conditions = result.conditions
         self.last_sent_at = now
+        self.clear_pending()
 
 
 def env_float(name: str, default: float, minimum: float = 0.0) -> float:
@@ -73,6 +98,7 @@ def load_alert_settings() -> AlertSettings:
             "READING_STALE_AFTER_SECONDS", 15.0
         ),
         cooldown_seconds=env_float("ALERT_COOLDOWN_SECONDS", 1800.0),
+        trigger_after_seconds=env_float("ALERT_TRIGGER_AFTER_SECONDS", 3.0),
         poll_interval_seconds=env_float("ALERT_POLL_INTERVAL_SECONDS", 2.0, 0.1),
         startup_grace_seconds=env_float("ALERT_STARTUP_GRACE_SECONDS", 15.0),
     )
@@ -108,7 +134,10 @@ def recovery_result(current: HealthResult) -> HealthResult:
 
 
 def monitor(settings: AlertSettings) -> None:
-    tracker = AlertTracker(settings.cooldown_seconds)
+    tracker = AlertTracker(
+        settings.cooldown_seconds,
+        settings.trigger_after_seconds,
+    )
     storage = optional_image_storage()
 
     if settings.startup_grace_seconds:
@@ -119,7 +148,12 @@ def monitor(settings: AlertSettings) -> None:
         )
         time.sleep(settings.startup_grace_seconds)
 
-    print("Discord alert monitor running. Press Ctrl+C to stop.", flush=True)
+    print(
+        "Discord alert monitor running with "
+        f"{settings.trigger_after_seconds:g}-second confirmation. "
+        "Press Ctrl+C to stop.",
+        flush=True,
+    )
     while True:
         rows = get_latest_readings(limit=1)
         reading = rows[0] if rows else None

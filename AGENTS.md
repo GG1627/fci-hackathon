@@ -22,6 +22,8 @@ Community Fridge. Read
 - The local API exposes current/recent SQLite readings and Supabase image URLs.
 - Health rules, alert rate limiting, and the one-command Pi launcher have
   automated test coverage.
+- Discord alerts support a configurable confirmation window for transient
+  conditions.
 - The web dashboard consumes the Pi status, readings, and image endpoints.
 - The dashboard shows the latest image plus ten previous camera captures.
 

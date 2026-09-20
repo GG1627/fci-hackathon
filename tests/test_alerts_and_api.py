@@ -86,6 +86,30 @@ class AlertTrackerTests(unittest.TestCase):
         self.assertEqual(tracker.action_for(healthy, 120), "recovery")
         self.assertEqual(recovery_result(healthy).title, "Community Chill recovered")
 
+    def test_problem_must_persist_before_first_alert(self):
+        problem = HealthResult("critical", ("TEMP_HIGH",), "High", "Too warm")
+        healthy = HealthResult("good", (), "Healthy", "Recovered")
+        tracker = AlertTracker(cooldown_seconds=60, trigger_after_seconds=3)
+
+        self.assertIsNone(tracker.action_for(problem, 100))
+        self.assertIsNone(tracker.action_for(problem, 102.9))
+        self.assertEqual(tracker.action_for(problem, 103), "alert")
+
+        tracker.mark_sent(problem, 103)
+        self.assertIsNone(tracker.action_for(problem, 104))
+        self.assertEqual(tracker.action_for(healthy, 104), "recovery")
+
+    def test_brief_problem_clears_without_alert_or_recovery(self):
+        problem = HealthResult("critical", ("TEMP_HIGH",), "High", "Too warm")
+        healthy = HealthResult("good", (), "Healthy", "Recovered")
+        tracker = AlertTracker(cooldown_seconds=60, trigger_after_seconds=3)
+
+        self.assertIsNone(tracker.action_for(problem, 100))
+        self.assertIsNone(tracker.action_for(healthy, 101))
+        self.assertIsNone(tracker.action_for(problem, 102))
+        self.assertIsNone(tracker.action_for(problem, 104))
+        self.assertEqual(tracker.action_for(problem, 105), "alert")
+
 
 class DiscordWebhookTests(unittest.TestCase):
     def test_sends_embed_without_mentions_and_normalizes_legacy_host(self):
