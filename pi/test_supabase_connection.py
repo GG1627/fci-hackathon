@@ -1,36 +1,20 @@
-import os
-from pathlib import Path
 from urllib.parse import urlparse
 
 import requests
-from dotenv import load_dotenv
-
-
-ROOT_DIR = Path(__file__).resolve().parents[1]
+from services.supabase_api import api_headers, load_supabase_config
 
 
 def main() -> None:
-    load_dotenv(ROOT_DIR / ".env")
-
-    supabase_url = os.getenv("SUPABASE_URL")
-    secret_key = os.getenv("SUPABASE_SECRET_KEY")
-    if not supabase_url or not secret_key:
-        raise SystemExit(
-            "Missing SUPABASE_URL or SUPABASE_SECRET_KEY in the root .env file."
-        )
-
     try:
+        supabase_url, secret_key = load_supabase_config()
         response = requests.get(
             f"{supabase_url.rstrip('/')}/rest/v1/",
-            headers={
-                "Accept": "application/openapi+json",
-                "apikey": secret_key,
-            },
+            headers={**api_headers(secret_key), "Accept": "application/openapi+json"},
             timeout=15,
         )
         response.raise_for_status()
         schema = response.json()
-    except (requests.RequestException, ValueError) as error:
+    except (RuntimeError, requests.RequestException, ValueError) as error:
         raise SystemExit(f"Supabase connection failed: {error}") from error
 
     tables = sorted(
