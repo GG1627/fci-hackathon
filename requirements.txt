@@ -1,6 +1,6 @@
 pyserial
 requests
 python-dotenv
-supabase
+supabase==2.31.0
 fastapi
 uvicorn
