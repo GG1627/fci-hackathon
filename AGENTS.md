@@ -34,7 +34,8 @@ Supabase is used only for cloud image storage in the `fridge-images` bucket.
 
 Implement and verify the independent camera pipeline: periodically capture a
 still image, upload it to Supabase Storage with a timestamped name, and retain
-only the newest three remote images. Do not add computer vision yet.
+only the newest three remote images. Use size-conscious JPEG settings and keep
+a safe manual image-list/cleanup command. Do not add computer vision yet.
 
 ## Serial Contract
 

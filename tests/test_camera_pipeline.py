@@ -80,6 +80,10 @@ class CameraServiceTests(unittest.TestCase):
         self.assertEqual(image_path.name, "fridge-20260920T190500Z.jpg")
         self.assertEqual(commands[0][0], "rpicam-still")
         self.assertIn("--nopreview", commands[0])
+        self.assertEqual(commands[0][commands[0].index("--width") + 1], "1280")
+        self.assertEqual(commands[0][commands[0].index("--height") + 1], "720")
+        self.assertEqual(commands[0][commands[0].index("--quality") + 1], "75")
+        self.assertEqual(commands[0][commands[0].index("--thumb") + 1], "none")
 
 
 class ImageStorageTests(unittest.TestCase):
@@ -102,6 +106,28 @@ class ImageStorageTests(unittest.TestCase):
         )
         self.assertEqual(bucket.removed, ["fridge-20260920T190000Z.jpg"])
         self.assertEqual(len(bucket.names), 3)
+
+    def test_clear_removes_only_timestamped_fridge_images(self):
+        names = [
+            "fridge-20260920T190000Z.jpg",
+            "fridge-20260920T190100Z.jpg",
+            "do-not-delete.jpg",
+        ]
+        bucket = FakeBucket(names)
+        service = ImageStorageService("url", "key", client=FakeClient(bucket))
+        service._bucket_ready = True
+
+        removed = service.clear_images()
+
+        self.assertEqual(removed, 2)
+        self.assertEqual(
+            bucket.removed,
+            [
+                "fridge-20260920T190000Z.jpg",
+                "fridge-20260920T190100Z.jpg",
+            ],
+        )
+        self.assertEqual(bucket.names, ["do-not-delete.jpg"])
 
 
 if __name__ == "__main__":

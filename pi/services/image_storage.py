@@ -6,6 +6,7 @@ from supabase import Client, create_client
 
 BUCKET_NAME = "fridge-images"
 MAX_REMOTE_IMAGES = 3
+DELETE_BATCH_SIZE = 100
 IMAGE_NAME_PATTERN = re.compile(r"^fridge-\d{8}T\d{6}Z\.jpg$")
 
 
@@ -72,6 +73,7 @@ class ImageStorageService:
         return public_url
 
     def list_image_names(self) -> list[str]:
+        self.ensure_public_bucket()
         bucket = self.client.storage.from_(BUCKET_NAME)
         names: list[str] = []
         offset = 0
@@ -106,3 +108,17 @@ class ImageStorageService:
         self.client.storage.from_(BUCKET_NAME).remove(old_names)
         for name in old_names:
             print(f"Removed old image: {name}", flush=True)
+
+    def clear_images(self) -> int:
+        """Delete only timestamped FridgeGuard images from the bucket."""
+        self.ensure_public_bucket()
+        names = self.list_image_names()
+        bucket = self.client.storage.from_(BUCKET_NAME)
+
+        for start in range(0, len(names), DELETE_BATCH_SIZE):
+            batch = names[start : start + DELETE_BATCH_SIZE]
+            bucket.remove(batch)
+            for name in batch:
+                print(f"Removed image: {name}", flush=True)
+
+        return len(names)
